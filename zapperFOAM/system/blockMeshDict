@@ -1,0 +1,408 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  8
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+	version		2.0 ;
+	format		ascii;
+	class		dictionary;
+	object		blockMeshDict;
+}
+
+convertToMeters 0.001;								// Base unit is mm
+inch			25.4;								// millimeter per inch
+n				17;									// number of radial cells
+n1				9;									// number of radial cells
+m				100;								// number of cells along axis
+
+length			#calc "12*$inch";					// tube length
+r1			    #calc "0.25/2*$inch";				// inner rod radius
+r2			    #calc "0.75/2.0*$inch";				// outer rod radius
+z2              #calc "sqrt(2.0*($r2)*($r2))/2.0";
+nz2		        #calc "-1.0*sqrt(2.0*($r2)*($r2))/2.0";
+y2a             #calc "2.0*$r2 + sqrt(2.0*($r2)*($r2))/2.0";
+y2b             #calc "2.0*$r2 - sqrt(2.0*($r2)*($r2))/2.0";
+
+yio             #calc "$y2a + 0.1";
+
+ri			    #calc "$y2a-$y2b";		        // inlet/outlet diameter
+rih			    #calc "($y2a-$y2b)/2";		    // inlet/outlet diameter
+
+nri			    #calc "-$y2a+$y2b";		        // inlet/outlet diameter
+pri			    #calc "12*$inch+$ri";	        // inlet/outlet diameter
+
+lengths			#calc "12*$inch-$ri";		  	// tube length
+
+m1              #calc "round( ($m) / (12*$inch-$ri) * $ri)";
+
+iolen           #calc "2.0*$r2 + sqrt(2.0*($r2)*($r2))/2.0 + 0.75*$inch";
+
+az1             #calc "1.0*$r2";
+az2             #calc "-1.0*$r2";
+ay1             #calc "1.0*$r2";
+ay2             #calc "2.0*$r2";
+ay3             #calc "3.0*$r2";
+
+z1              #calc "sqrt(2.0*($r1)*($r1))/2.0";
+nz1		        #calc "-1.0*sqrt(2.0*($r1)*($r1))/2.0";
+y1a             #calc "2.0*$r1 + sqrt(2.0*($r1)*($r1))/2.0+4*$r1";
+y1b             #calc "2.0*$r1 - sqrt(2.0*($r1)*($r1))/2.0+4*$r1";
+
+bz1             #calc "1.0*$r1";
+bz2             #calc "-1.0*$r1";
+by1             #calc "1.0*$r1+4*$r1";
+by2             #calc "2.0*$r1+4*$r1";
+by3             #calc "3.0*$r1+4*$r1";
+by4             #calc "1.0*$r1-1.5*$r1";
+
+
+vertices 
+(
+	// Outer Tube
+	($ri $y2b $z2)		// vertex 0
+	($ri $y2a $z2)		// vertex 1
+	($ri $y2a $nz2)		// vertex 2
+	($ri $y2b $nz2)     // vertex 3
+
+	($lengths $y2b $z2)  // vertex 4
+	($lengths $y2a $z2)  // vertex 5
+	($lengths $y2a $nz2) // vertex 6
+	($lengths $y2b $nz2) // vertex 7
+
+	// Inner Tube
+	($ri $y1b $z1)		// vertex 8
+	($ri $y1a $z1)		// vertex 9
+	($ri $y1a $nz1)		// vertex 10
+	($ri $y1b $nz1)     // vertex 11
+	
+	($lengths $y1b $z1)  // vertex 12
+	($lengths $y1a $z1)  // vertex 13
+	($lengths $y1a $nz1) // vertex 14
+	($lengths $y1b $nz1) // vertex 15
+
+	// Inlet
+	// Outer Tube
+	(0 $y2b $z2)	// vertex 16
+	(0 $y2a $z2)	// vertex 17
+	(0 $y2a $nz2)   // vertex 18
+	(0 $y2b $nz2)   // vertex 19
+
+	// Inner Tube
+	(0 $y1b $z1)	// vertex 20
+	(0 $y1a $z1)	// vertex 21
+	(0 $y1a $nz1)   // vertex 22
+	(0 $y1b $nz1)   // vertex 23
+
+	// Perpendicular Inlet Start
+	(3.36759 $iolen  -3.367596)    // vertex 26
+	(10.102788 $iolen  -3.367596)   // vertex 27
+	(10.102788 $iolen  3.367596)  	// vertex 24
+	(3.36759 $iolen  3.367596)	    // vertex 25
+
+	// Outlet 
+	// Outer Tube
+	($length $y2b $z2)	// vertex 28
+	($length $y2a $z2)	// vertex 29
+	($length $y2a $nz2) // vertex 30
+	($length $y2b $nz2) // vertex 31
+
+	// Inner Tube
+	($length $y1b $z1)	// vertex 32
+	($length $y1a $z1)	// vertex 33
+	($length $y1a $nz1) // vertex 34
+	($length $y1b $nz1) // vertex 35
+
+	// Perpendicular Outlet Start
+	(294.69720 $iolen -3.367596)  // vertex 36
+	(301.43240 $iolen -3.367596)  // vertex 37
+	(301.43240 $iolen 3.367596)  // vertex 38
+	(294.69720 $iolen 3.367596)  // vertex 39
+
+	// Pre-Inlet
+	// Outer Tube
+	($nri $y2b $z2)	   // vertex 40
+	($nri $y2a $z2)	   // vertex 41
+	($nri $y2a $nz2)   // vertex 42
+	($nri $y2b $nz2)   // vertex 43
+
+	// Inner Tube
+	($nri $y1b $z1)	   // vertex 44
+	($nri $y1a $z1)	   // vertex 45
+	($nri $y1a $nz1)   // vertex 46
+	($nri $y1b $nz1)   // vertex 47
+
+	// Post-Outlet
+	// Outer Tube
+	($pri $y2b $z2)	   // vertex 48
+	($pri $y2a $z2)	   // vertex 49
+	($pri $y2a $nz2)   // vertex 50
+	($pri $y2b $nz2)   // vertex 51
+
+	// Inner Tube
+	($pri $y1b $z1)	   // vertex 52
+	($pri $y1a $z1)	   // vertex 53
+	($pri $y1a $nz1)   // vertex 54
+	($pri $y1b $nz1)   // vertex 55
+
+	// Inlet merge coordinates
+	(10.102788 29.94198 3.367596)  	// vertex 56
+	(3.36759 29.94198 3.367596)	    // vertex 57
+	(3.36759 29.94198 -3.367596)    // vertex 58
+	(10.102788  29.94198 -3.367596)   // vertex 59
+
+	(301.4324 29.94198 3.367596)  	// vertex 60
+	(294.6972 29.94198 3.367596)	// vertex 61
+	(294.6972 29.94198 -3.367596)   // vertex 62
+	(301.4324 29.94198 -3.367596)   // vertex 63
+);
+
+blocks
+(
+	// Main tube
+    hex (4 5 13 12 0 1 9 8) ($n $n $m) simpleGrading (1 1 1)
+	hex (15 14 6 7 11 10 2 3) ($n $n $m) simpleGrading (1 1 1)
+	hex (4 12 15 7 0 8 11 3) ($n $n $m) simpleGrading (1 1 1)
+	hex (13 5 6 14 9 1 2 10) ($n $n $m) simpleGrading (1 1 1)
+
+	// Inlet
+	hex (0 1 9 8 16 17 21 20) ($n $n $n1) simpleGrading (1 1 1)
+	hex (11 10 2 3 23 22 18 19) ($n $n $n1) simpleGrading (1 1 1)
+	hex (0 8 11 3 16 20 23 19) ($n $n $n1) simpleGrading (1 1 1)
+	hex (9 1 2 10 21 17 18 22) ($n $n $n1) simpleGrading (1 1 1)
+
+	// Pre-Inlet
+	hex (16 17 21 20 40 41 45 44) ($n $n $m1) simpleGrading (1 1 1)
+	hex (23 22 18 19 47 46 42 43) ($n $n $m1) simpleGrading (1 1 1)
+	hex (16 20 23 19 40 44 47 43) ($n $n $m1) simpleGrading (1 1 1)
+	hex (21 17 18 22 45 41 42 46) ($n $n $m1) simpleGrading (1 1 1)
+
+	// Inlet connection
+	hex (24 25 26 27 58 59 56 57)  ($n1 $n $n1) simpleGrading (1 1 1)
+    hex (56 57 58 59 1 17 18 2)  ($n1 $n 2) simpleGrading (1 1 1)
+
+
+	// Outlet
+	hex (28 29 33 32 4 5 13 12)  ($n $n $n1) simpleGrading (1 1 1)
+	hex (35 34 30 31 15 14 6 7) ($n $n $n1) simpleGrading (1 1 1)
+	hex (28 32 35 31 4 12 15 7) ($n $n $n1) simpleGrading (1 1 1)
+	hex (33 29 30 34 13 5 6 14) ($n $n $n1) simpleGrading (1 1 1)
+
+	// Post-Outlet
+	hex (48 49 53 52 28 29 33 32) ($n $n $m1) simpleGrading (1 1 1)
+	hex (55 54 50 51 35 34 30 31) ($n $n $m1) simpleGrading (1 1 1)
+	hex (48 52 55 51 28 32 35 31) ($n $n $m1) simpleGrading (1 1 1)
+	hex (53 49 50 54 33 29 30 34) ($n $n $m1) simpleGrading (1 1 1)
+
+	// Outlet Tube
+	hex (36 37 38 39 62 63 60 61)  ($n1 $n $n1) simpleGrading (1 1 1)
+	hex (62 63 60 61 6 30 29 5) ($n1 $n 2) simpleGrading (1 1 1)
+);
+
+edges (
+	arc 0 1 ($ri $ay2 $az1)
+	arc 1 2 ($ri $ay3 0)
+	arc 2 3 ($ri $ay2 $az2)
+	arc 3 0 ($ri $ay1 0)
+	
+	arc 4 5 ($lengths $ay2 $az1)
+	arc 5 6 ($lengths $ay3 0)
+	arc 6 7 ($lengths $ay2 $az2)
+	arc 7 4 ($lengths $ay1 0)
+
+	arc 8 9 ($ri $by2 $bz1)
+	arc 9 10 ($ri $by3 0)
+	arc 10 11 ($ri $by2 $bz2)
+	arc 11 8 ($ri $by1 0)
+	
+	arc 12 13 ($lengths $by2 $bz1)
+	arc 13 14 ($lengths $by3 0)
+	arc 14 15 ($lengths $by2 $bz2)
+	arc 15 12 ($lengths $by1 0)
+
+	arc 16 17 (0 $ay2 $az1)
+	arc 17 18 (0 $ay3 0)
+	arc 18 19 (0 $ay2 $az2)
+	arc 19 16 (0 $ay1 0)
+
+	arc 20 21 (0 $by2 $bz1)
+	arc 21 22 (0 $by3 0)
+	arc 22 23 (0 $by2 $bz2)
+	arc 23 20 (0 $by1 0)
+
+	arc 24 27 (1.972692 $iolen 0)
+	arc 25 26 (11.497692 $iolen 0)
+	arc 24 25 (6.735192 $iolen -4.7624)
+	arc 26 27 (6.735192 $iolen  4.7624)
+
+	arc 28 29 ($length $ay2 $az1)
+	arc 29 30 ($length $ay3 0)
+	arc 30 31 ($length $ay2 $az2)
+	arc 31 28 ($length $ay1 0)
+
+	arc 32 33 ($length $by2 $bz1)
+	arc 33 34 ($length $by3 0)
+	arc 34 35 ($length $by2 $bz2)
+	arc 35 32 ($length $by1 0)
+
+	arc 36 39 (293.302307 $iolen 0) 
+    arc 37 38 (302.82731 $iolen 0)
+	arc 36 37 (298.0648 $iolen -4.7625)
+	arc 38 39 (298.0648 $iolen 4.7624)
+
+	arc 40 41 ($nri $ay2 $az1)
+	arc 41 42 ($nri $ay3 0)
+	arc 42 43 ($nri $ay2 $az2)
+	arc 43 40 ($nri $ay1 0)
+
+	arc 44 45 ($nri $by2 $bz1)
+	arc 45 46 ($nri $by3 0)
+	arc 46 47 ($nri $by2 $bz2)
+	arc 47 44 ($nri $by1 0)
+
+	arc 48 49 ($pri $ay2 $az1)
+	arc 49 50 ($pri $ay3 0)
+	arc 50 51 ($pri $ay2 $az2)
+	arc 51 48 ($pri $ay1 0)
+
+	arc 52 53 ($pri $by2 $bz1)
+	arc 53 54 ($pri $by3 0)
+	arc 54 55 ($pri $by2 $bz2)
+	arc 55 52 ($pri $by1 0)
+
+	arc 57 58 (1.972692 30.57499 0)
+	arc 56 59 (11.497692 30.57499 0)
+	arc 58 59 (6.735192 29.1653 -4.7624)
+	arc 57 56 (6.735192 29.1653  4.7624)
+
+	arc 61 62 (293.3023 30.57499 0)
+	arc 60 63 (302.8273 30.57499 0)
+	arc 62 63 (298.06480 29.1653 -4.7624)
+	arc 61 60 (298.0648 29.1653  4.7624)
+
+);
+
+
+boundary (
+
+	inlet
+	{
+		type patch;
+		faces
+		(	
+			(24 25 26 27) 	
+		);
+	}
+
+	wall
+	{
+		type wall;
+		faces
+		(
+
+			(24 58 57 27)
+			(25 59 56 26)
+			(26 56 57 27)
+			(24 58 59 25)
+
+			// Tube Outside wall
+			(0 1 5 4)
+			(0 4 7 3)
+			(3 2 6 7)
+			(2 6 5 1)
+
+			// Tube Inside wall
+			(8 9 13 12)
+	        (12 15 11 8)
+			(11 10 14 15)
+			(9 10 14 13)
+	
+			// Inlet Top Wall
+			(45 41 42 46)
+			(47 43 42 46)
+			(40 41 45 44)
+			(40 44 47 43)
+
+			// Inlet Outside Wall
+			(16 17 1 0)
+			(16 0 3 19)
+			(19 18 2 3)
+
+			// Inlet Inside Wall
+			(20 21 9 8)
+	        (8 11 23 20)
+			(23 22 10 11)
+			(21 22 10 9)
+
+			// Pre-Inlet Outside Wall
+			(16 17 41 40)
+			(16 40 43 19)
+			(19 18 42 43)
+			(17 18 42 41) 	
+
+			// Pre-Inlet Inside Wall
+			(20 21 44 45)
+	        (44 47 23 20)
+			(23 22 46 47)
+			(21 22 46 45)
+
+			// Outlet Piece Outside Walls
+			(39 61 62 36)
+			(39 61 60 38)
+			(38 60 63 37)
+			(63 62 36 37)
+			(61 62 5 6)
+			(61 60 29 5)
+			(60 63 30 29)
+			(62 63 30 6)
+
+			(4 28 31 7)
+			(4 28 29 5)
+			(6 7 31 30)
+
+
+			// Outlet Piece Inside Walls
+			(12 15 35 32)
+			(12 32 33 13)
+			(13 33 34 14)
+			(14 15 35 34)
+
+			// Outlet Bottom Wall
+			(48 52 55 51)
+			(51 55 54 50)
+			(54 50 49 53)
+			(49 53 52 48)
+
+			// Post-Outlet Outside Wall
+			(28 48 51 31)
+			(28 48 49 29)
+			(49 29 30 50)
+			(30 50 31 51) 	
+
+			// Post-Outlet Inside Wall
+			(32 33 53 52)
+	        (32 52 35 55)
+			(35 55 54 34)
+			(54 34 33 53)
+
+			// Patch layer inlet wall
+			(17 57 58 18)
+			(17 57 56 1)
+			(1 56 59 2)
+			(2 59 58 18)
+		);
+	} 
+
+	outlet
+	{
+		type patch;
+		faces
+		(
+   			(36 37 38 39)
+		);
+	}
+);
