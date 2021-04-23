@@ -1,88 +1,111 @@
 using CSV
+using DataFrames
 using Cairo
 using Fontconfig
 using Gadfly
-using Printf
-using DataFrames
 using Compose
-using Colors
-using ColorSchemes
-using Contour
-
-shapes = [
-    Gadfly.Shape.utriangle,
-    Gadfly.Shape.circle,
-    Gadfly.Shape.cross,
-    Gadfly.Shape.diamond,
-    Gadfly.Shape.octagon,
-]
+using Printf
+using NumericIO
+using Lazy
 
 try
     Gadfly.pop_theme()
 catch
 end;
 theTheme = Theme(
-    alphas = [0.1],
-    discrete_highlight_color = c -> RGBA{Float32}(c.r, c.g, c.b, 1),
-    point_shapes = shapes,
     highlight_width = 0.05pt,
     major_label_font = "PT Sans",
     minor_label_font = "PT Sans",
     key_label_font = "PT Sans",
     major_label_font_size = 8pt,
-    point_size = 2pt,
+    line_width = 1pt,
     key_swatch_color = "black",
-    plot_padding = [0.1inch, 0.1inch, 0.1inch, -0.1inch],
+    plot_padding = [0.1inch, 0.0inch, 0.1inch, -0.1inch],
     key_label_font_size = 4pt,
-    key_title_font_size = 5pt,
+    key_title_font_size = 0pt,
+    point_size = 2pt,
 )
 Gadfly.push_theme(theTheme)
 
-dfall = CSV.read("Data/Pexperiments.csv", DataFrame, header = true)
-dfT = CSV.read("Data/transfer.csv", DataFrame, header = true)
+t50 = 1 - (0.5^(1 / 3))
+include("Scripts/precipitator.jl")
+const Λ = Precipitator(0.003175, 0.007874, 0.130, 298.15, 1e5, 1lpm)
+x = range(10, stop = 3000, length = 100)
+voltage = repeat(x, 10)[:]
+zstar = vtoz(Λ, voltage)
 
-layers = []
-push!(layers, layer(dfT, x = :x, y = :y, Geom.line, Theme(default_color = "black")))
-push!(
-    layers,
-    layer(
-        dfall,
-        x = :ratio,
-        y = :normalized,
-        color = :legend3,
-        shape = :legend2,
-        ymin = :ymin,
-        ymax = :ymax,
-        #Geom.errorbar,
-        Geom.point,
-        Theme(
-            alphas = [0.1],
-            discrete_highlight_color = c -> RGBA{Float32}(c.r, c.g, c.b, 1),
-            point_shapes = shapes,
-            highlight_width = 0.4pt,
-            point_size = 2.5pt,
-        ),
-    ),
+diameter = map(x -> ztod(Λ, x), zstar)
+transmission50_1 = map(x -> ztod(Λ, x), zstar .* t50)
+
+const Λ1 = Precipitator(0.003175, 0.007874, 0.215, 298.15, 1e5, 0.5lpm)
+zstar05 = vtoz(Λ1, voltage)
+diameter05 = map(x -> ztod(Λ1, x), zstar05)
+transmission50_05 = map(x -> ztod(Λ1, x), zstar05 .* t50)
+
+f = "1 L/min"
+ff = "50% 1 L/min"
+f05 = "0.5 L/min"
+ff05 = "50% 0.5 L/min"
+df1 = DataFrame(
+    v = voltage,
+    d = diameter * 1e9,
+    tr50_1 = transmission50_1 * 1e9,
+    Legend = [f for i = 1:size(voltage, 1)],
+    Legend2 = [ff for i = 1:size(voltage, 1)],
+)
+df05 = DataFrame(
+    v = voltage,
+    d = diameter05 * 1e9,
+    tr50_05 = transmission50_05 * 1e9,
+    Legend = [f05 for i = 1:size(voltage, 1)],
+    Legend2 = [ff05 for i = 1:size(voltage, 1)],
 )
 
-guides = []
-push!(guides, Guide.xlabel("z/z<sup>s</sup> (-)"))
-push!(guides, Guide.ylabel("Fraction transmitted (-)"))
-push!(guides, Guide.YTicks(ticks = collect(0:0.2:1.0)))
-push!(guides, Guide.XTicks(ticks = collect(0:0.2:1.6)))
-push!(guides, Guide.shapekey(title = "Shapekey"))
-push!(guides, Guide.colorkey("Colorkey"))
 
-PJ_palette_paper =
-    [colorant"rgb(128,0,0)" colorant"rgb(0,0,139)" colorant"rgb(255,140,0)" colorant"rgb(0,100,0)"]
+PJ_palette_paper = [
+	colorant"rgb(139,58,58)",
+	colorant"rgb(233, 150, 122)",
+	colorant"rgb(46, 139, 87)",
+	colorant"rgb(155,205,155)"
+]
 
-scales = []
-push!(scales, Scale.color_discrete_manual(PJ_palette_paper...))
-push!(scales, Scale.x_continuous())
+fn1(x) = (x in 1:3) ? string(@sprintf("%d", 10^x)) : ""
 
-coords = []
-push!(coords, Coord.cartesian(ymin = 0, ymax = 1, xmax = 1.6, xmin = 0))
+gengrid(r) = [vcat(map(x -> x:x:9x, r)...); r[end] * 10]
 
-pre = Gadfly.plot(layers..., guides..., scales..., coords..., theTheme)
-img = PNG("Figures/f08.png", dpi = 600, 3.1inch, 2.2inch)
-draw(img, pre)
+xticks = log10.(gengrid([10, 10, 100, 1000]))
+yticks = log10.(gengrid([10, 10, 100]))
+
+cut = plot(
+    layer(df1, x = :v, y = :d, color = :Legend, Geom.line),
+    layer(
+        df1,
+        x = :v,
+        y = :tr50_1,
+        color = :Legend2,
+        Geom.line,
+        Theme(line_style = [:dash]),
+    ),
+    layer(df05, x = :v, y = :d, color = :Legend, Geom.line),
+    layer(
+        df05,
+        x = :v,
+        y = :tr50_05,
+        color = :Legend2,
+        Geom.line,
+        Theme(line_style = [:dash]),
+    ),
+    Guide.xlabel("Voltage (V)"),
+    Guide.ylabel("Diameter (nm)", orientation = :vertical),
+    Scale.color_discrete_manual(PJ_palette_paper...),
+    Scale.x_log10(labels = fn1),
+    Scale.y_log10(labels = fn1),
+    theTheme,
+    Guide.xticks(ticks = xticks),
+    Guide.yticks(ticks = yticks),
+    Guide.colorkey,
+    Coord.cartesian(ymax = log10(1000.150), xmax = log10(3000)),
+)
+
+img = PNG("Figures/f08.png", dpi = 600, 3.1inch, 2.2inch);
+draw(img, cut)

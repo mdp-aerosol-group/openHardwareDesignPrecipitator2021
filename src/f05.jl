@@ -45,9 +45,9 @@ function panel2()
     plot(
         l1,
         l3,
-        Guide.xlabel("Radial direction (mm)"),
-        Guide.ylabel("v (m/s)"),
-        Guide.title("x = $xlab (m)"),
+        Guide.xlabel("Radial direction (inches)"),
+        Guide.ylabel("Flow velocity (m/s)"),
+        Guide.title("middle"),
         Guide.yticks(ticks = collect(0:0.02:0.1)),
         Guide.xticks(ticks = xticks),
         Guide.colorkey(title = ""),
@@ -68,12 +68,39 @@ function panel1(posx)
     xticks =
         @> range(Λ.r₁, stop = Λ.r₂, length = 5) collect x -> round.(1000 * x; digits = 2)
 
+
     plot(
         l,
         Scale.color_continuous(minvalue = -180, maxvalue = 0),
         Guide.xlabel("Radial direction (inches)"),
-        Guide.ylabel("v (m/s)"),
-        Guide.title("x = $posx (m)"),
+        Guide.ylabel("Flow velocity (m/s)"),
+        Guide.title("inlet"),
+        #Guide.title("x = $posx (m)"),
+        Guide.yticks(ticks = collect(0:0.02:0.14)),
+        Guide.xticks(ticks = xticks),
+        Scale.x_continuous(labels = lfun),
+        Coord.Cartesian(xmin = Λ.r₁ * 1000, xmax = Λ.r₂ * 1000),
+        Theme(plot_padding = [0mm, 5mm, 2mm, 2mm]),
+    )
+end
+
+function panel3(posx)
+    angles = -pi:pi/16:0
+    df = @_ mapfoldl(interpolated_profile(fx, posx, _), vcat, angles)
+    l = @> df layer(x = df[!, :r], y = :v, color = :θ, Geom.line)
+    xl1 = [2 / 16, 3 / 16, 4 / 16, 5 / 16, 6 / 16]
+    xl = ["2/16", "3/16", "4/16", "5/16", "6/16"]
+    lfun(x) = xl[argmin(abs.(x ./ inches ./ 1000 .- xl1))]
+    xticks =
+        @> range(Λ.r₁, stop = Λ.r₂, length = 5) collect x -> round.(1000 * x; digits = 2)
+
+
+    plot(
+        l,
+        Scale.color_continuous(minvalue = -180, maxvalue = 0),
+        Guide.xlabel("Radial direction (inches)"),
+        Guide.ylabel("Flow velocity (m/s)"),
+        Guide.title("outlet"),
         Guide.yticks(ticks = collect(0:0.02:0.14)),
         Guide.xticks(ticks = xticks),
         Scale.x_continuous(labels = lfun),
@@ -83,5 +110,5 @@ function panel1(posx)
 end
 
 set_default_plot_size(25cm, 8cm)
-p = hstack(panel1(0.015), panel2(), panel1(0.29))
-Gadfly.draw(PNG("Figures/f06.png", dpi = 600), p)
+p = hstack(panel1(0.015), panel2(), panel3(0.29))
+Gadfly.draw(PNG("Figures/f05.png", dpi = 600), p)
