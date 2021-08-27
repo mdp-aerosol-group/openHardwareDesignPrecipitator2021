@@ -1,89 +1,85 @@
 using CSV
+using DataFrames
 using Cairo
 using Fontconfig
 using Gadfly
-using Printf
-using DataFrames
-using Compose
-using Colors
-using ColorSchemes
-using Contour
-
-shapes = [
-    Gadfly.Shape.utriangle,
-    Gadfly.Shape.circle,
-    Gadfly.Shape.cross,
-    Gadfly.Shape.diamond,
-    Gadfly.Shape.octagon,
-]
+using Statistics
+using Lazy
+using MLStyle
+using Underscores
+using ProgressMeter
+using Interpolations
+using DifferentialEquations
+using ParameterizedFunctions
 
 try
     Gadfly.pop_theme()
 catch
 end;
 theTheme = Theme(
-    alphas = [0.1],
-    discrete_highlight_color = c -> RGBA{Float32}(c.r, c.g, c.b, 1),
-    point_shapes = shapes,
     highlight_width = 0.05pt,
-    major_label_font = "PT Sans",
-    minor_label_font = "PT Sans",
-    key_label_font = "PT Sans",
+
     major_label_font_size = 8pt,
+    default_color = "black",
     point_size = 2pt,
     key_swatch_color = "black",
-    plot_padding = [0.1inch, 0.0inch, 0.1inch, -0.1inch],
+    line_width = 1pt,
+    plot_padding = [0.1inch, 0.1inch, 0.1inch, -0.1inch],
     key_label_font_size = 4pt,
     key_title_font_size = 5pt,
 )
 Gadfly.push_theme(theTheme)
 
-dfall = CSV.read("Data/Pexperiments.csv", DataFrame, header = true)
-dfT = CSV.read("Data/transfer.csv", DataFrame, header = true)
+include("Scripts/precipitator.jl")
+const Λ = Precipitator(0.25inches / 2, 0.75inches / 2, 12inches, 298.15, 1e5, 1lpm)
+include("Scripts/reshape_fields.jl")
 
-layers = []
-push!(layers, layer(dfT, x = :x, y = :y, Geom.line, Theme(default_color = "blue")))
-push!(
-    layers,
-    layer(
-        dfall,
-        x = :ratio,
-        y = :normalized,
-        color = :legend3,
-        shape = :legend2,
-        Geom.point,
-        Theme(
-            alphas = [0.1],
-            discrete_highlight_color = c -> RGBA{Float32}(c.r, c.g, c.b, 1),
-            point_shapes = shapes,
-            highlight_width = 0.4pt,
-            point_size = 2.5pt,
-        ),
-    ),
+df, fx, fr, fθ = interpolated_field_functions()
+
+Dp = 200e-9
+v = dtov(Λ, Dp)
+zs = dtoz(Λ, Dp)
+zzs = [0.0001; 0.01:0.01:0.1; 0.15:0.05:0.9; 0.91:0.01:1; 1.2] |> collect
+
+ODEsimple = @ode_def_bare begin
+    dx = ux(Λ, r)
+    dr = -zp * Er(Λ, v, r)
+end Λ v zp
+
+function simplemodel(posr, zp)
+    function condition(u, t, integrator)
+        out = (u[1] > Λ.l) || (u[2] < Λ.r₁) || (u[2] > Λ.r₂) ? 0.0 : 1.0
+    end
+    affect!(integrator) = terminate!(integrator)
+    cb = ContinuousCallback(condition, affect!)
+    prob = ODEProblem(ODEsimple, [0.0, posr], (0.0, 60), [Λ v zp])
+    sol = solve(prob, RK4(), abstol = 1e-7, reltol = 1e-7, callback = cb)
+    ext = mapfoldl(x -> x, hcat, sol.u)
+    T = (ext[1, end] > Λ.l) & (sol.t[end] < 60) ? 1.0 : 0.0
+end
+
+rrs = range(Λ.r₁, stop = Λ.r₂, length = 200)
+rmid = (rrs[2:end] - rrs[1:end-1]) ./ 2 .+ rrs[1:end-1]
+us = map(x -> ux(Λ, x), rmid)
+
+frac = map(1:length(rrs)-1) do i
+    pi * us[i] * (rrs[i+1]^2 - rrs[i]^2) ./ 1.6666666e-5
+end
+
+f(zzs) = @> map(x -> simplemodel(x, zzs * zs), rmid) (x -> x .* frac) sum
+tr = @showprogress map(f, zzs)
+df = DataFrame(zzs = zzs, T = tr, label = "Diffeq")
+p = plot(
+    df,
+    x = :zzs,
+    y = :T,
+    Geom.line,
+    Guide.xlabel("z/zˢ"),
+    Guide.xticks(ticks = 0:0.2:1.2),
+    Guide.yticks(ticks = 0:0.2:1),
+    Guide.ylabel("Fraction transmitted (-)"),
+    Coord.cartesian(xmin = 0, xmax = 1.2),
+    theTheme,
 )
-
-guides = []
-push!(guides, Guide.xlabel("z<sub>DMA</sub>/z<sup>s</sup> (-)"))
-push!(guides, Guide.ylabel("Fraction transmitted (-)"))
-push!(guides, Guide.YTicks(ticks = collect(0:0.2:1.0)))
-push!(guides, Guide.XTicks(ticks = collect(0:0.2:1.6)))
-push!(guides, Guide.shapekey(title = "Shapekey"))
-push!(guides, Guide.colorkey("Colorkey"))
-
-PJ_palette_paper = [
-	colorant"rgb(128,0,0)",
-	colorant"rgb(0,0,139)",
-	colorant"rgb(255,140,0)",
-	colorant"rgb(0,100,0)"
-]
-
-scales = []
-push!(scales, Scale.color_discrete_manual(PJ_palette_paper...))
-push!(scales, Scale.x_continuous())
-
-coords = []
-push!(coords, Coord.cartesian(ymin = 0, ymax = 1, xmax = 1.6, xmin = 0))
-
-pre = Gadfly.plot(layers..., guides..., scales..., coords..., theTheme)
-img = PNG("Figures/f07.png", dpi = 600, 3.1inch, 2.2inch)
-draw(img, pre)
+set_default_plot_size(3.1inch, 2.2inch)
+Gadfly.draw(PNG("Figures/f07.png", dpi = 600), p)
