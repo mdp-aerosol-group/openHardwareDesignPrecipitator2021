@@ -19,7 +19,7 @@ catch
 end;
 
 theTheme = Theme(
-    highlight_width = 0.05pt,
+    highlight_width = 0.01pt,
     major_label_font = "PT Sans",
     minor_label_font = "PT Sans",
     key_label_font = "PT Sans",
